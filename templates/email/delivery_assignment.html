@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #f8f9fa; padding: 20px; text-align: center; }
+        .content { padding: 20px; }
+        .order-card { background: #f8f9fa; padding: 15px; border-radius: 4px; margin: 15px 0; border: 1px solid #ddd; }
+        .footer { text-align: center; padding: 20px; font-size: 0.9em; color: #6c757d; }
+        .button { display: inline-block; padding: 10px 20px; background: #28a745; color: white; text-decoration: none; border-radius: 4px; }
+        .warning { background: #fff3cd; color: #856404; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .map { width: 100%; height: 200px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>New Delivery Assignment</h2>
+        </div>
+        
+        <div class="content">
+            <p>Hello {{ delivery_person.username }},</p>
+            
+            <p>You have been assigned to deliver Order #{{ order.id }}.</p>
+            
+            <div class="order-card">
+                <h4>Order Details:</h4>
+                <p><strong>Shop:</strong> {{ order.shop.name }}</p>
+                <p><strong>Shop Address:</strong> {{ order.shop.address }}</p>
+                <p><strong>Delivery Address:</strong> {{ order.delivery_address }}</p>
+                
+                <h4>Items:</h4>
+                <ul>
+                    {% for item in order.items %}
+                        <li>{{ item.quantity }}x {{ item.product.name }}</li>
+                    {% endfor %}
+                </ul>
+                
+                {% if order.special_instructions %}
+                    <div class="warning">
+                        <strong>Special Instructions:</strong><br>
+                        {{ order.special_instructions }}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="map">
+                <img src="https://maps.googleapis.com/maps/api/staticmap?size=600x300&maptype=roadmap
+                    &markers=color:blue%7Clabel:S%7C{{ order.shop.location_lat }},{{ order.shop.location_lng }}
+                    &markers=color:red%7Clabel:D%7C{{ order.delivery_lat }},{{ order.delivery_lng }}
+                    &path=color:0x0000ff|weight:5|{{ order.shop.location_lat }},{{ order.shop.location_lng }}|{{ order.delivery_lat }},{{ order.delivery_lng }}
+                    &key={{ config.GOOGLE_MAPS_API_KEY }}"
+                     alt="Delivery Route Map" style="max-width: 100%; height: auto;">
+            </div>
+            
+            <p>
+                <strong>Navigation Links:</strong><br>
+                <a href="https://www.google.com/maps/dir/?api=1&destination={{ order.shop.location_lat }},{{ order.shop.location_lng }}" 
+                   class="button" style="margin-right: 10px; background: #007bff;">
+                    Navigate to Shop
+                </a>
+                <a href="https://www.google.com/maps/dir/?api=1&origin={{ order.shop.location_lat }},{{ order.shop.location_lng }}&destination={{ order.delivery_lat }},{{ order.delivery_lng }}" 
+                   class="button">
+                    Navigate to Customer
+                </a>
+            </p>
+            
+            {% set distance = calculate_distance(
+                order.shop.location_lat, 
+                order.shop.location_lng,
+                order.delivery_lat,
+                order.delivery_lng
+            ) %}
+            <p><strong>Total Distance:</strong> {{ "%.1f"|format(distance) }} km</p>
+            <p><strong>Delivery Fee:</strong> ${{ "%.2f"|format(order.delivery_fee) }}</p>
+            
+            <div class="warning">
+                <strong>Important:</strong>
+                <ul>
+                    <li>Please confirm pickup at the shop</li>
+                    <li>Update order status when starting delivery</li>
+                    <li>Follow any special instructions carefully</li>
+                    <li>Mark as delivered only after customer receives the order</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Thank you for your service!</p>
+            <p>For any issues, please contact the support team immediately.</p>
+        </div>
+    </div>
+</body>
+</html>

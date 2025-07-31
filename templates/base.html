@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{% block title %}{% endblock %} - QuickShop</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body class="d-flex flex-column min-vh-100">
+
+    <!-- Main Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light">
+        <div class="container">
+            <a class="logo" href="{{ url_for('main.index') }}">
+                <span class="logo-icon">
+                    <i class="bi bi-shop"></i>
+                </span>
+                <span class="logo">QuickShop</span>
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    {% if not current_user.is_authenticated %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.index') }}">
+                            <i class="bi bi-house-door"></i> Home
+                        </a>
+                    </li>
+              
+            <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('shop.index') }}" </a>
+                    <i class="bi bi-info-circle"></i> Shop Now
+                </a>
+            </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.about') }}">
+                            <i class="bi bi-info-circle"></i> About QuickShop
+                        </a>
+                    </li>
+                    {% elif current_user.is_authenticated and current_user.role == 'customer' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.index') }}">
+                            <i class="bi bi-house-door"></i> Home
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('shop.index') }}">
+                            <i class="bi bi-bag"></i> Shop
+                        </a>
+                    </li>
+                    {% elif current_user.is_authenticated and current_user.role == 'shop_owner' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('shop.dashboard') }}">
+                            <i class="bi bi-speedometer2"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('shop.manage') }}">
+                            <i class="bi bi-grid"></i> Products
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('shop.orders') }}">
+                            <i class="bi bi-box-seam"></i> Orders
+                        </a>
+                    </li>
+                    {% if current_user.shop %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('shop.about', shop_id=current_user.shop.id) }}">
+                            <i class="bi bi-shop"></i> My Shop
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% endif %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.contact_page') }}">
+                            <i class="bi bi-envelope"></i> Contact
+                        </a>
+                    </li>
+                </ul>
+
+                <ul class="navbar-nav ms-auto">
+                    {% if current_user.is_authenticated %}
+                        {% if current_user.role == 'admin' %}
+                        <!-- Admin Navigation -->
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('admin.dashboard') }}">
+                                <i class="bi bi-speedometer2"></i> Admin Panel
+                            </a>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-gear"></i> Manage
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('admin.orders') }}">
+                                        <i class="bi bi-box-seam"></i> Orders
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('admin.manage_shops') }}">
+                                        <i class="bi bi-shop"></i> Shops
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('admin.manage_delivery') }}">
+                                        <i class="bi bi-truck"></i> Delivery
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('admin.settings') }}">
+                                        <i class="bi bi-gear"></i> Settings
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        {% elif current_user.role == 'shop_owner' %}
+                        <!-- Shop Owner Navigation -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-shop"></i> Shop Management
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{{ url_for('shop.dashboard') }}">
+                                    <i class="bi bi-speedometer2"></i> Dashboard
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('shop.orders') }}">
+                                    <i class="bi bi-box-seam"></i> Orders
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('shop.manage') }}">
+                                    <i class="bi bi-grid"></i> Products
+                                </a></li>
+                                {% if current_user.shop %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{{ url_for('shop.about', shop_id=current_user.shop.id) }}">
+                                    <i class="bi bi-info-circle"></i> About Shop
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('shop.contact', shop_id=current_user.shop.id) }}">
+                                    <i class="bi bi-envelope"></i> Contact Info
+                                </a></li>
+                                {% endif %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{{ url_for('shop.settings') }}">
+                                    <i class="bi bi-gear"></i> Settings
+                                </a></li>
+                            </ul>
+                        </li>
+
+                        {% elif current_user.role == 'delivery' %}
+                        <!-- Delivery Person Navigation -->
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('delivery.dashboard') }}">
+                                <i class="bi bi-speedometer2"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('delivery.settings') }}">
+                                <i class="bi bi-gear"></i> Settings
+                            </a>
+                        </li>
+                        <!-- Common User Profile Menu -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-person-circle"></i> {{ current_user.username }}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="{{ url_for('auth.profile') }}">
+                                    <i class="bi bi-person"></i> Profile
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">
+                                    <i class="bi bi-box-arrow-right"></i> Logout
+                                </a></li>
+                            </ul>
+                        </li>
+                        {% else %}
+                        <!-- Customer Navigation -->
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('shop.index') }}" </a>
+                                <i class="bi bi-info-circle"></i> Shop Now
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link position-relative" href="{{ url_for('main.cart') }}">
+                                <i class="bi bi-cart"></i> Cart
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger cart-count">
+                                    0
+                                </span>
+                            </a>
+                        </li>
+                        
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-person"></i> My Account
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{{ url_for('user.dashboard') }}">
+                                    <i class="bi bi-speedometer2"></i> Dashboard
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('user.orders') }}">
+                                    <i class="bi bi-box-seam"></i> My Orders
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('user.negotiations') }}">
+                                    <i class="bi bi-chat-dots"></i> Negotiations
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{{ url_for('user.settings') }}">
+                                    <i class="bi bi-gear"></i> Settings
+                                </a></li>
+                            </ul>
+                        </li>
+                        {% endif %}
+
+                        <!-- Common User Profile Menu -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-person-circle"></i> {{ current_user.username }}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="{{ url_for('auth.profile') }}">
+                                    <i class="bi bi-person"></i> Profile
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">
+                                    <i class="bi bi-box-arrow-right"></i> Logout
+                                </a></li>
+                            </ul>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="btn btn-outline-primary me-2" href="{{ url_for('auth.login') }}">Login</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="btn btn-primary" href="{{ url_for('auth.register') }}">Register</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-shrink-0">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    // Set up CSRF token for all AJAX requests
+    const csrfToken = '{{ csrf_token() }}';
+    
+    // Add CSRF token to all fetch requests
+    const originalFetch = window.fetch;
+    window.fetch = function() {
+        let [resource, config] = arguments;
+        if(config === undefined) {
+            config = {};
+        }
+        if(config.headers === undefined) {
+            config.headers = {};
+        }
+        if (config.method && config.method.toUpperCase() !== 'GET') {
+            config.headers['X-CSRFToken'] = csrfToken;
+        }
+        return originalFetch(resource, config);
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Update cart count on page load
+        function updateCartCount() {
+            fetch('/api/cart/count')
+                .then(response => response.json())
+                .then(data => {
+                    const countElement = document.querySelector('.cart-count');
+                    if (countElement) {
+                        countElement.textContent = data.count || 0;
+                        countElement.style.display = data.count > 0 ? 'block' : 'none';
+                    }
+                })
+                .catch(error => console.error('Error fetching cart count:', error));
+        }
+
+        // Update cart count initially
+        updateCartCount();
+
+        // Listen for cart update events
+        window.addEventListener('cart-updated', function() {
+            updateCartCount();
+        });
+
+        // Search suggestions functionality
+        const searchInput = document.querySelector('.search-input');
+        const suggestionsContainer = document.querySelector('.search-suggestions');
+        let debounceTimeout;
+
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                clearTimeout(debounceTimeout);
+                const query = this.value.trim();
+                
+                if (query.length < 2) {
+                    suggestionsContainer.style.display = 'none';
+                    return;
+                }
+
+                debounceTimeout = setTimeout(() => {
+                    fetch(`/api/search/suggestions?q=${encodeURIComponent(query)}`)
+                        .then(response => response.json())
+                        .then(suggestions => {
+                            suggestionsContainer.innerHTML = '';
+                            
+                            if (suggestions.length > 0) {
+                                suggestions.forEach(suggestion => {
+                                    const item = document.createElement('a');
+                                    item.className = 'dropdown-item';
+                                    item.href = suggestion.url;
+                                    item.innerHTML = `<i class="bi bi-${suggestion.type === 'product' ? 'box' : 'shop'} me-2"></i>${suggestion.name}`;
+                                    suggestionsContainer.appendChild(item);
+                                });
+                                suggestionsContainer.style.display = 'block';
+                            } else {
+                                suggestionsContainer.style.display = 'none';
+                            }
+                        });
+                }, 300);
+            });
+        }
+    });
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

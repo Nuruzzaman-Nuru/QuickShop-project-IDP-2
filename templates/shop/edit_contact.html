@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Contact Information - {{ shop.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-0">Edit Contact Information</h3>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        
+                        <div class="mb-3">
+                            <label for="phone" class="form-label">Phone Number</label>
+                            <input type="tel" class="form-control" id="phone" name="phone" 
+                                   value="{{ shop.phone }}" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email Address</label>
+                            <input type="email" class="form-control" id="email" name="email" 
+                                   value="{{ shop.email }}" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="address" class="form-label">Shop Address</label>
+                            <textarea class="form-control" id="address" name="address" 
+                                      rows="3" required>{{ shop.address }}</textarea>
+                            <input type="hidden" id="latitude" name="latitude" value="{{ shop.latitude }}">
+                            <input type="hidden" id="longitude" name="longitude" value="{{ shop.longitude }}">
+                        </div>
+
+                        <div id="map" style="height: 300px;" class="mb-3"></div>
+
+                        <div class="mb-3">
+                            <label for="business_hours" class="form-label">Business Hours</label>
+                            <div class="row g-3">
+                                {% for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+                                <div class="col-md-12">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input day-checkbox" type="checkbox" 
+                                                       id="open_{{ day.lower() }}" name="open_days" 
+                                                       value="{{ day }}" 
+                                                       {% if day in shop.business_hours %}checked{% endif %}>
+                                                <label class="form-check-label" for="open_{{ day.lower() }}">
+                                                    {{ day }}
+                                                </label>
+                                            </div>
+                                            <div class="row hours-input {% if day not in shop.business_hours %}d-none{% endif %}">
+                                                <div class="col-6">
+                                                    <label class="form-label">Opening Time</label>
+                                                    <input type="time" class="form-control" 
+                                                           name="opening_{{ day.lower() }}" 
+                                                           value="{{ shop.business_hours[day]['open'] if day in shop.business_hours else '09:00' }}">
+                                                </div>
+                                                <div class="col-6">
+                                                    <label class="form-label">Closing Time</label>
+                                                    <input type="time" class="form-control" 
+                                                           name="closing_{{ day.lower() }}" 
+                                                           value="{{ shop.business_hours[day]['close'] if day in shop.business_hours else '17:00' }}">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="social_media" class="form-label">Social Media Links</label>
+                            <div class="input-group mb-2">
+                                <span class="input-group-text"><i class="fab fa-facebook"></i></span>
+                                <input type="url" class="form-control" name="facebook" 
+                                       placeholder="Facebook URL" value="{{ shop.social_media.facebook }}">
+                            </div>
+                            <div class="input-group mb-2">
+                                <span class="input-group-text"><i class="fab fa-instagram"></i></span>
+                                <input type="url" class="form-control" name="instagram" 
+                                       placeholder="Instagram URL" value="{{ shop.social_media.instagram }}">
+                            </div>
+                            <div class="input-group mb-2">
+                                <span class="input-group-text"><i class="fab fa-twitter"></i></span>
+                                <input type="url" class="form-control" name="twitter" 
+                                       placeholder="Twitter URL" value="{{ shop.social_media.twitter }}">
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                            <a href="{{ url_for('shop.contact', shop_id=shop.id) }}" 
+                               class="btn btn-outline-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://maps.googleapis.com/maps/api/js?key={{ config['GOOGLE_MAPS_API_KEY'] }}&libraries=places"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Map initialization
+    const addressInput = document.getElementById('address');
+    const latInput = document.getElementById('latitude');
+    const lngInput = document.getElementById('longitude');
+    const mapDiv = document.getElementById('map');
+
+    const map = new google.maps.Map(mapDiv, {
+        zoom: 15,
+        center: { 
+            lat: parseFloat(latInput.value) || 23.8103, 
+            lng: parseFloat(lngInput.value) || 90.4125 
+        }
+    });
+
+    const marker = new google.maps.Marker({
+        map: map,
+        draggable: true,
+        position: map.getCenter()
+    });
+
+    const autocomplete = new google.maps.places.Autocomplete(addressInput);
+    autocomplete.bindTo('bounds', map);
+
+    autocomplete.addListener('place_changed', function() {
+        const place = autocomplete.getPlace();
+        if (!place.geometry) return;
+
+        if (place.geometry.viewport) {
+            map.fitBounds(place.geometry.viewport);
+        } else {
+            map.setCenter(place.geometry.location);
+            map.setZoom(17);
+        }
+
+        marker.setPosition(place.geometry.location);
+        latInput.value = place.geometry.location.lat();
+        lngInput.value = place.geometry.location.lng();
+    });
+
+    marker.addListener('dragend', function() {
+        const position = marker.getPosition();
+        latInput.value = position.lat();
+        lngInput.value = position.lng();
+        
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({ location: position }, function(results, status) {
+            if (status === 'OK' && results[0]) {
+                addressInput.value = results[0].formatted_address;
+            }
+        });
+    });
+
+    // Business hours toggle functionality
+    document.querySelectorAll('.day-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const hoursInput = this.closest('.card-body').querySelector('.hours-input');
+            if (this.checked) {
+                hoursInput.classList.remove('d-none');
+            } else {
+                hoursInput.classList.add('d-none');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

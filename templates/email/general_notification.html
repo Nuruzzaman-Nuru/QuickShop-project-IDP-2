@@ -1,0 +1,14 @@
+{% extends "email/base_email.html" %}
+
+{% block content %}
+<div style="padding: 20px; background-color: #ffffff; border-radius: 10px;">
+    <h2>Notification</h2>
+    <p>Hello {{ recipient.username }},</p>
+    
+    <div style="margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-left: 4px solid #007bff; border-radius: 4px;">
+        {{ message }}
+    </div>
+    
+    <p>Best regards,<br>{{ config.SITE_NAME }}</p>
+</div>
+{% endblock %}

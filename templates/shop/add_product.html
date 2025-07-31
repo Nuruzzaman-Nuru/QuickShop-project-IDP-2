@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Add Product - {{ shop.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <h2 class="mb-4">Add New Product</h2>
+                    <form id="addProductForm" method="POST" enctype="multipart/form-data">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Product Name</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="category" class="form-label">Category</label>
+                            <input type="text" class="form-control" id="category" name="category">
+                            <small class="text-muted">Optional - helps customers find your product</small>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="price" class="form-label">Price</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">৳</span>
+                                    <input type="number" class="form-control" id="price" name="price" min="0" step="0.01" required>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="stock" class="form-label">Stock</label>
+                                <input type="number" class="form-control" id="stock" name="stock" min="0" required>
+                            </div>
+                        </div>
+
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="enableNegotiation" name="enable_negotiation">
+                                    <label class="form-check-label" for="enableNegotiation">
+                                        Enable Price Negotiation
+                                    </label>
+                                </div>
+                            </div>
+                            <div id="negotiationSettings" class="card-body" style="display: none;">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="minPrice" class="form-label">Minimum Price</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">৳</span>
+                                            <input type="number" class="form-control" id="minPrice" name="min_price" min="0" step="0.01">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="maxDiscount" class="form-label">Maximum Discount (%)</label>
+                                        <input type="number" class="form-control" id="maxDiscount" name="max_discount" min="0" max="100" value="20">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="image" class="form-label">Product Image</label>
+                            <input type="file" class="form-control" id="image" name="image" accept="image/*">
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Add Product</button>
+                            <a href="{{ url_for('shop.dashboard') }}" class="btn btn-outline-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('addProductForm');
+    const enableNegotiation = document.getElementById('enableNegotiation');
+    const negotiationSettings = document.getElementById('negotiationSettings');
+    const priceInput = document.getElementById('price');
+    const minPriceInput = document.getElementById('minPrice');
+    const maxDiscountInput = document.getElementById('maxDiscount');
+
+    // Toggle negotiation settings visibility
+    enableNegotiation.addEventListener('change', function() {
+        negotiationSettings.style.display = this.checked ? 'block' : 'none';
+        if (!this.checked) {
+            minPriceInput.value = '';
+            maxDiscountInput.value = '20';
+        }
+    });
+
+    // Update min price when price changes
+    priceInput.addEventListener('input', function() {
+        if (enableNegotiation.checked && this.value) {
+            const price = parseFloat(this.value);
+            const maxDiscount = parseFloat(maxDiscountInput.value) || 20;
+            const minPrice = price * (1 - maxDiscount/100);
+            minPriceInput.value = minPrice.toFixed(2);
+        }
+    });
+
+    // Handle form submission
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        if (!enableNegotiation.checked) {
+            formData.delete('min_price');
+            formData.delete('max_discount');
+        }
+
+        try {
+            const response = await fetch(window.location.href, {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+            
+            if (result.status === 'success') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: result.message,
+                    showConfirmButton: false,
+                    timer: 1500
+                }).then(() => {
+                    window.location.href = "{{ url_for('shop.dashboard') }}";
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: result.message
+                });
+            }
+        } catch (error) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Something went wrong. Please try again.'
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

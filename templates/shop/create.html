@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Create Shop - QuickShop{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="text-center mb-0">Create Your Shop</h3>
+                </div>
+                <div class="card-body">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }}">{{ message }}</div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <form method="POST" enctype="multipart/form-data">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Shop Name</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description" rows="4" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="address" class="form-label">Address (Optional)</label>
+                            <input type="text" class="form-control" id="address" name="address">
+                            <input type="hidden" id="latitude" name="latitude">
+                            <input type="hidden" id="longitude" name="longitude">
+                        </div>
+                        <div class="mb-3">
+                            <label for="image" class="form-label">Shop Image</label>
+                            <input type="file" class="form-control" id="image" name="image" accept="image/*">
+                        </div>
+                        <div class="mb-3">
+                            <label for="category" class="form-label">Category</label>
+                            <select class="form-select" id="category" name="category" required>
+                                <option value="">Select a category</option>
+                                <option value="food">Food & Beverages</option>
+                                <option value="electronics">Electronics</option>
+                                <option value="fashion">Fashion</option>
+                                <option value="health">Health & Beauty</option>
+                                <option value="home">Home & Living</option>
+                                <option value="sports">Sports & Outdoors</option>
+                                <option value="books">Books & Stationery</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div id="map" class="mb-3" style="height: 300px;"></div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">Create Shop</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://maps.googleapis.com/maps/api/js?key={{ config['GOOGLE_MAPS_API_KEY'] }}&libraries=places"></script>
+<script src="{{ url_for('static', filename='js/maps.js') }}"></script>
+{% endblock %}

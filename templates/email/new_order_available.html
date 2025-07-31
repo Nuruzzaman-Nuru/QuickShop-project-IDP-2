@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #f8f9fa; padding: 20px; text-align: center; }
+        .content { padding: 20px; }
+        .map { width: 100%; height: 200px; margin: 20px 0; }
+        .order-card { background: #f8f9fa; padding: 15px; border-radius: 4px; margin: 15px 0; border: 1px solid #ddd; }
+        .footer { text-align: center; padding: 20px; font-size: 0.9em; color: #6c757d; }
+        .button { display: inline-block; padding: 10px 20px; background: #28a745; color: white; text-decoration: none; border-radius: 4px; }
+        .distance-info { background: #e9ecef; padding: 10px; border-radius: 4px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>New Delivery Order Available</h2>
+        </div>
+        
+        <div class="content">
+            <p>Hello {{ delivery_person.username }},</p>
+            
+            <p>A new order is available for delivery in your area:</p>
+            
+            <div class="order-card">
+                <h4>Order #{{ order.id }}</h4>
+                <p><strong>Shop:</strong> {{ order.shop.name }}</p>
+                <p><strong>Shop Address:</strong> {{ order.shop.address }}</p>
+                <p><strong>Delivery Address:</strong> {{ order.delivery_address }}</p>
+                
+                <div class="distance-info">
+                    {% set distance = calculate_distance(
+                        delivery_person.location_lat, 
+                        delivery_person.location_lng,
+                        order.shop.location_lat,
+                        order.shop.location_lng
+                    ) %}
+                    <p><strong>Distance from your location:</strong> {{ "%.1f"|format(distance) }} km</p>
+                    <p><strong>Estimated travel time:</strong> {{ estimate_travel_time(distance)|int }} minutes</p>
+                </div>
+                
+                <p><strong>Items to deliver:</strong> {{ order.items|length }}</p>
+                {% if order.special_instructions %}
+                    <p><strong>Special Instructions:</strong> {{ order.special_instructions }}</p>
+                {% endif %}
+            </div>
+            
+            <div class="map">
+                <!-- Static map showing shop, delivery location, and current delivery person location -->
+                <img src="https://maps.googleapis.com/maps/api/staticmap?size=600x300&markers=color:blue|label:Y|{{ delivery_person.location_lat }},{{ delivery_person.location_lng }}&markers=color:red|label:S|{{ order.shop.location_lat }},{{ order.shop.location_lng }}&markers=color:green|label:D|{{ order.delivery_lat }},{{ order.delivery_lng }}&path=color:0x0000ff|weight:5|{{ delivery_person.location_lat }},{{ delivery_person.location_lng }}|{{ order.shop.location_lat }},{{ order.shop.location_lng }}|{{ order.delivery_lat }},{{ order.delivery_lng }}&key={{ config.GOOGLE_MAPS_API_KEY }}" 
+                     alt="Delivery Route Map"
+                     style="max-width: 100%; height: auto;">
+            </div>
+            
+            <p>
+                <a href="{{ url_for('delivery.accept_order', order_id=order.id, _external=True) }}" class="button">
+                    Accept Delivery
+                </a>
+            </p>
+            
+            <p><small>This order will be available for other delivery persons if not accepted soon.</small></p>
+        </div>
+        
+        <div class="footer">
+            <p>Thank you for your service!</p>
+            <p>For any issues, please contact the support team.</p>
+        </div>
+    </div>
+</body>
+</html>

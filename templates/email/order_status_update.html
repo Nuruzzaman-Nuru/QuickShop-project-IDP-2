@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #f8f9fa; padding: 20px; text-align: center; }
+        .content { padding: 20px; }
+        .status { display: inline-block; padding: 5px 10px; border-radius: 4px; font-weight: bold; }
+        .status-pending { background: #ffeeba; color: #856404; }
+        .status-confirmed { background: #b8daff; color: #004085; }
+        .status-delivering { background: #c3e6cb; color: #155724; }
+        .status-completed { background: #d4edda; color: #155724; }
+        .status-cancelled { background: #f8d7da; color: #721c24; }
+        .footer { text-align: center; padding: 20px; font-size: 0.9em; color: #6c757d; }
+        .button { display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; }
+        .map { width: 100%; height: 200px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Order Status Update</h2>
+        </div>
+        
+        <div class="content">
+            <p>Dear {{ order.customer.username }},</p>
+            
+            <p>Your order #{{ order.id }} status has been updated to:</p>
+            
+            <p>
+                <span class="status status-{{ order.status }}">
+                    {{ order.status|title }}
+                </span>
+            </p>
+            
+            {% if order.status == 'confirmed' %}
+                <p>Your order has been confirmed and is being prepared by {{ order.shop.name }}.</p>
+                <p>We'll notify you once a delivery person has been assigned to your order.</p>
+            {% elif order.status == 'delivering' %}
+                <p>Your order is on its way!</p>
+                <p>Delivery Person: {{ order.delivery_person.username }}</p>
+                {% if order.estimated_delivery_time %}
+                    <p>Estimated delivery time: {{ order.estimated_delivery_time.strftime('%I:%M %p') }}</p>
+                {% endif %}
+                <p>You can track your delivery in real-time using the button below.</p>
+                <p>
+                    <a href="{{ url_for('user.track_order', order_id=order.id, _external=True) }}" class="button">
+                        Track Order
+                    </a>
+                </p>
+            {% elif order.status == 'completed' %}
+                <p>Your order has been delivered successfully. Thank you for shopping with us!</p>
+                <p>If you have any feedback about your order or delivery experience, please let us know.</p>
+            {% elif order.status == 'cancelled' %}
+                <p>Your order has been cancelled. If you did not request this cancellation, please contact our support team.</p>
+            {% endif %}
+            
+            <div style="margin: 20px 0;">
+                <h3>Order Summary:</h3>
+                <ul>
+                    {% for item in order.items %}
+                    <li>
+                        {{ item.quantity }}x {{ item.product.name }} 
+                        ({% if item.negotiated_price %}
+                            ${{ "%.2f"|format(item.negotiated_price) }} each - Negotiated Price
+                        {% else %}
+                            ${{ "%.2f"|format(item.price) }} each
+                        {% endif %})
+                    </li>
+                    {% endfor %}
+                </ul>
+                <p><strong>Delivery Fee:</strong> ${{ "%.2f"|format(order.delivery_fee) }}</p>
+                <p><strong>Total Amount:</strong> ${{ "%.2f"|format(order.total_amount + order.delivery_fee) }}</p>
+                <p><strong>Delivery Address:</strong> {{ order.delivery_address }}</p>
+                {% if order.special_instructions %}
+                    <p><strong>Special Instructions:</strong> {{ order.special_instructions }}</p>
+                {% endif %}
+            </div>
+            
+            {% if order.status == 'delivering' %}
+                <div class="map">
+                    <img src="https://maps.googleapis.com/maps/api/staticmap?center={{ order.delivery_lat }},{{ order.delivery_lng }}&zoom=13&size=600x300&maptype=roadmap&markers=color:red%7C{{ order.delivery_lat }},{{ order.delivery_lng }}&key={{ config.GOOGLE_MAPS_API_KEY }}" 
+                         alt="Delivery Location Map" style="max-width: 100%; height: auto;">
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="footer">
+            <p>Thank you for shopping with us!</p>
+            <p>If you have any questions, please contact our support team.</p>
+        </div>
+    </div>
+</body>
+</html>

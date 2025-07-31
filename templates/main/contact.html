@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Contact Us{% endblock %}
+
+{% block content %}
+<!-- Contact Section -->
+<section class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8 text-center mb-4">
+                <h2>Contact Us</h2>
+                <p class="lead">Get in touch with us for any questions or support</p>
+            </div>
+        </div>
+        
+        <!-- Contact Information Cards -->
+        <div class="row justify-content-center mb-5">
+            <div class="col-md-3">
+                <div class="card h-100 text-center contact-info-card">
+                    <div class="card-body">
+                        <i class="bi bi-envelope-fill display-4 text-primary mb-3"></i>
+                        <h5 class="card-title">Email</h5>
+                        <p class="card-text">
+                            <a href="mailto:support@quickshop.com" class="text-decoration-none">support@quickshop.com</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card h-100 text-center contact-info-card">
+                    <div class="card-body">
+                        <i class="bi bi-telephone-fill display-4 text-primary mb-3"></i>
+                        <h5 class="card-title">Phone</h5>
+                        <p class="card-text">
+                            <a href="tel:+8801234567890" class="text-decoration-none">+8801307347646</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card h-100 text-center contact-info-card">
+                    <div class="card-body">
+                        <i class="bi bi-geo-alt-fill display-4 text-primary mb-3"></i>
+                        <h5 class="card-title">Address</h5>
+                        <p class="card-text">Level 4, S Purbachal, American City Dhaka, Bangladesh</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card h-100 text-center contact-info-card">
+                    <div class="card-body">
+                        <i class="bi bi-clock-fill display-4 text-primary mb-3"></i>
+                        <h5 class="card-title">Support </h5>
+                        <p class="card-text">24/7(order available) <br>9AM - 7PM(Delivery service available)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contact Form -->
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <form id="contactForm" onsubmit="handleContactSubmit(event)">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Name</label>
+                                <input type="text" class="form-control" id="name" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="email" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="subject" class="form-label">Subject</label>
+                                <input type="text" class="form-control" id="subject" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="message" class="form-label">Message</label>
+                                <textarea class="form-control" id="message" rows="4" required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Send Message</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function handleContactSubmit(event) {
+    event.preventDefault();
+    
+    const formData = {
+        name: document.getElementById('name').value,
+        email: document.getElementById('email').value,
+        subject: document.getElementById('subject').value,
+        message: document.getElementById('message').value
+    };
+
+    fetch('/contact', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            Swal.fire({
+                icon: 'success',
+                title: 'Message Sent!',
+                text: data.message,
+                showConfirmButton: false,
+                timer: 3000
+            });
+            document.getElementById('contactForm').reset();
+        }
+    })
+    .catch(error => {
+        Swal.fire({
+            icon: 'error',
+            title: 'Oops...',
+            text: 'Something went wrong! Please try again later.'
+        });
+    });
+}
+</script>
+{% endblock %}

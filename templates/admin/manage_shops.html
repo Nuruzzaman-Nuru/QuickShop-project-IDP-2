@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Shops - Admin{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Manage Shops</h2>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Search and Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form class="row g-3" method="GET">
+                <div class="col-md-4">
+                    <label class="form-label">Search Shops</label>
+                    <input type="text" class="form-control" name="q" 
+                           value="{{ request.args.get('q', '') }}"
+                           placeholder="Search by name, owner, or location...">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Filter Status</label>
+                    <select class="form-select" name="status">
+                        <option value="">All Shops</option>
+                        <option value="active" {% if request.args.get('status') == 'active' %}selected{% endif %}>Active</option>
+                        <option value="inactive" {% if request.args.get('status') == 'inactive' %}selected{% endif %}>Inactive</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Search
+                    </button>
+                </div>
+                {% if request.args.get('q') or request.args.get('status') %}
+                <div class="col-md-2 d-flex align-items-end">
+                    <a href="{{ url_for('admin.manage_shops') }}" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-x-circle"></i> Clear
+                    </a>
+                </div>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    <!-- Shops List -->
+    <div class="card">
+        <div class="card-body">
+            {% if shops %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Shop Name</th>
+                            <th>Owner</th>
+                            <th>Products</th>
+                            <th>Orders</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for shop in shops %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('shop.about', shop_id=shop.id) }}" class="text-decoration-none">
+                                    {{ shop.name }}
+                                </a>
+                            </td>
+                            <td>{{ shop.owner.username if shop.owner else 'No Owner' }}</td>
+                            <td>{{ shop.products|length }}</td>
+                            <td>{{ shop.orders|length }}</td>
+                            <td>
+                                <span class="badge bg-{{ 'success' if shop.is_active else 'danger' }}">
+                                    {{ 'Active' if shop.is_active else 'Inactive' }}
+                                </span>
+                            </td>
+                            <td>{{ shop.created_at.strftime('%Y-%m-%d') }}</td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="{{ url_for('shop.about', shop_id=shop.id) }}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-{{ 'danger' if shop.is_active else 'success' }}"
+                                            onclick="toggleShopStatus({{ shop.id }}, {{ shop.is_active|tojson }})">
+                                        <i class="bi bi-{{ 'x-circle' if shop.is_active else 'check-circle' }}"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-4">
+                <p class="text-muted mb-0">No shops found matching your criteria.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleShopStatus(shopId, currentStatus) {
+    if (!confirm(`Are you sure you want to ${currentStatus ? 'deactivate' : 'activate'} this shop?`)) {
+        return;
+    }
+
+    fetch(`/api/admin/shops/${shopId}/toggle-status`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token._value }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: data.error || 'Failed to update shop status'
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'An error occurred while updating shop status'
+        });
+    });
+}
+</script>
+{% endblock %}

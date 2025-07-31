@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}About Us{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-5">
+                    <h1 class="text-center mb-4">About QuickShop</h1>
+                    
+                    <div class="mb-5">
+                        <h4>Our Mission</h4>
+                        <p>QuickShop aims to revolutionize the local shopping experience by connecting customers with nearby shops through our innovative e-commerce platform. We believe in empowering local businesses while providing customers with convenient access to products they need.</p>
+                    </div>
+
+                    <div class="mb-5">
+                        <h4>What We Offer</h4>
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-start">
+                                    <i class="bi bi-shop text-primary display-6 me-3"></i>
+                                    <div>
+                                        <h5>Local Shop Discovery</h5>
+                                        <p>Find and support local businesses in your area</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-start">
+                                    <i class="bi bi-truck text-primary display-6 me-3"></i>
+                                    <div>
+                                        <h5>Fast Delivery</h5>
+                                        <p>Quick and reliable delivery to your doorstep</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-start">
+                                    <i class="bi bi-chat-dots text-primary display-6 me-3"></i>
+                                    <div>
+                                        <h5>Smart Negotiations</h5>
+                                        <p>AI-powered price negotiations for better deals</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-start">
+                                    <i class="bi bi-graph-up text-primary display-6 me-3"></i>
+                                    <div>
+                                        <h5>Shop Management</h5>
+                                        <p>Powerful tools for shop owners</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-5">
+                        <h4>Our Team</h4>
+                        <p>We are a dedicated team of developers, designers, and business professionals committed to creating the best possible e-commerce experience for both shop owners and customers.</p>
+                    </div>
+
+                    <div class="text-center">
+                        <a href="{{ url_for('auth.register') }}" class="btn btn-primary">Join QuickShop Today</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

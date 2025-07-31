@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Contact - {{ shop.name }}{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2 class="mb-0">Contact {{ shop.name }}</h2>
+                    {% if current_user.is_authenticated and current_user.id == shop.owner_id %}
+                    <a href="{{ url_for('shop.edit_contact', shop_id=shop.id) }}" class="btn btn-primary">
+                        <i class="bi bi-pencil"></i> Edit Contact Info
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if shop.phone or shop.email or shop.website or shop.business_hours %}
+                        <div class="contact-info">
+                            {% if shop.phone %}
+                            <div class="mb-3">
+                                <h5><i class="bi bi-telephone"></i> Phone</h5>
+                                <p class="mb-0"><a href="tel:{{ shop.phone }}">{{ shop.phone }}</a></p>
+                            </div>
+                            {% endif %}
+
+                            {% if shop.email %}
+                            <div class="mb-3">
+                                <h5><i class="bi bi-envelope"></i> Email</h5>
+                                <p class="mb-0"><a href="mailto:{{ shop.email }}">{{ shop.email }}</a></p>
+                            </div>
+                            {% endif %}
+
+                            {% if shop.website %}
+                            <div class="mb-3">
+                                <h5><i class="bi bi-globe"></i> Website</h5>
+                                <p class="mb-0"><a href="{{ shop.website }}" target="_blank" rel="noopener noreferrer">{{ shop.website }}</a></p>
+                            </div>
+                            {% endif %}
+
+                            {% if shop.business_hours %}
+                            <div class="mb-3">
+                                <h5><i class="bi bi-clock"></i> Business Hours</h5>
+                                <div class="business-hours">
+                                    {% set hours = {} %}
+                                    {% if shop.business_hours %}
+                                        {% set hours = shop.business_hours|from_json %}
+                                    {% endif %}
+                                    
+                                    {% if hours and hours.items() %}
+                                        {% for day, times in hours.items() %}
+                                        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                                            <span class="text-capitalize">{{ day }}</span>
+                                            <span>{{ times.open }} - {{ times.close }}</span>
+                                        </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <p class="text-muted mb-0">Business hours not specified</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        {% if current_user.is_authenticated and current_user.id == shop.owner_id %}
+                        <div class="alert alert-info mb-0">
+                            <h5><i class="bi bi-info-circle"></i> Welcome to Your Contact Section!</h5>
+                            <p>Help customers reach you by adding your contact information. Click the Edit button above to:</p>
+                            <ul class="mb-0">
+                                <li>Add your phone number</li>
+                                <li>Include your business email</li>
+                                <li>Share your website</li>
+                                <li>Set your business hours</li>
+                            </ul>
+                        </div>
+                        {% else %}
+                        <p class="text-muted mb-0">No contact information available yet.</p>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if shop.address %}
+                    <div class="mt-4">
+                        <h5><i class="bi bi-geo-alt"></i> Location</h5>
+                        <p class="mb-0">{{ shop.address }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="text-center mb-0">Contact {{ shop.name }}</h3>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Your Name</label>
+                            <input type="text" class="form-control" id="name" name="name" 
+                                   value="{{ current_user.username if current_user.is_authenticated else '' }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Your Email</label>
+                            <input type="email" class="form-control" id="email" name="email" 
+                                   value="{{ current_user.email if current_user.is_authenticated else '' }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="subject" class="form-label">Subject</label>
+                            <input type="text" class="form-control" id="subject" name="subject" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="message" class="form-label">Message</label>
+                            <textarea class="form-control" id="message" name="message" rows="5" required></textarea>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">Send Message</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

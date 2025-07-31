@@ -1,0 +1,193 @@
+{% set search_type = search_type|default('all') %}
+<form class="search-form" action="{{ url_for('main.search') }}" method="GET">
+    <div class="input-group search-container">
+        <input class="form-control search-input" type="search" name="q" 
+                          placeholder="Search for shops, products, or locations..." 
+                          value="{{ request.args.get('q', '') }}"
+                          aria-label="Search" autocomplete="off">
+        {% if search_type != 'all' %}
+            <input type="hidden" name="type" value="{{ search_type }}">
+        {% endif %}
+        <button class="btn btn-outline-primary" type="submit">
+            <i class="bi bi-search"></i>
+        </button>
+        <div class="search-suggestions">
+            <!-- Suggestions will be populated here -->
+        </div>
+    </div>
+</form>
+
+<style>
+.search-container {
+    position: relative;
+}
+
+.search-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    max-height: 300px;
+    overflow-y: auto;
+    display: none;
+}
+
+.suggestion-item {
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    color: #333;
+    text-decoration: none;
+    transition: background-color 0.2s;
+    border-bottom: 1px solid #eee;
+}
+
+.suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.suggestion-item:hover {
+    background-color: #f8f9fa;
+    text-decoration: none;
+}
+
+.suggestion-icon {
+    margin-right: 0.75rem;
+    color: #6c757d;
+    width: 20px;
+    text-align: center;
+}
+
+.suggestion-content {
+    flex: 1;
+}
+
+.suggestion-title {
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+}
+
+.suggestion-metadata {
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+.search-input:focus {
+    box-shadow: none;
+    border-color: #80bdff;
+}
+
+.search-form .btn-outline-primary {
+    border-color: #ced4da;
+}
+
+.search-form .btn-outline-primary:hover {
+    background-color: #007bff;
+    border-color: #007bff;
+    color: white;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchContainers = document.querySelectorAll('.search-container');
+    
+    searchContainers.forEach(container => {
+        const searchInput = container.querySelector('.search-input');
+        const suggestionsContainer = container.querySelector('.search-suggestions');
+        let debounceTimeout;
+
+        searchInput.addEventListener('input', function() {
+            clearTimeout(debounceTimeout);
+            const query = this.value.trim();
+            
+            if (query.length < 2) {
+                suggestionsContainer.style.display = 'none';
+                return;
+            }
+
+            debounceTimeout = setTimeout(() => {
+                const shopId = container.closest('form').querySelector('input[name="shop_id"]')?.value;
+                const url = new URL('/api/search/suggestions', window.location.origin);
+                url.searchParams.append('q', query);
+                if (shopId) url.searchParams.append('shop_id', shopId);
+
+                fetch(url)
+                    .then(response => response.json())
+                    .then(suggestions => {
+                        suggestionsContainer.innerHTML = '';
+                        
+                        if (suggestions.length > 0) {
+                            suggestions.forEach(suggestion => {
+                                const item = document.createElement('a');
+                                item.className = 'suggestion-item';
+                                item.href = suggestion.url;
+
+                                const icon = suggestion.type === 'product' ? 'box' : 'shop';
+                                const metadata = suggestion.type === 'product' 
+                                    ? `${suggestion.category || 'Uncategorized'} · ৳${suggestion.price.toFixed(2)}`
+                                    : 'Shop';
+
+                                item.innerHTML = `
+                                    <i class="bi bi-${icon} suggestion-icon"></i>
+                                    <div class="suggestion-content">
+                                        <div class="suggestion-title">${suggestion.name}</div>
+                                        <div class="suggestion-metadata">${metadata}</div>
+                                    </div>
+                                `;
+
+                                suggestionsContainer.appendChild(item);
+                            });
+                            suggestionsContainer.style.display = 'block';
+                        } else {
+                            suggestionsContainer.style.display = 'none';
+                        }
+                    });
+            }, 300);
+        });
+
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!container.contains(e.target)) {
+                suggestionsContainer.style.display = 'none';
+            }
+        });
+
+        // Handle keyboard navigation
+        searchInput.addEventListener('keydown', function(e) {
+            const items = suggestionsContainer.querySelectorAll('.suggestion-item');
+            const current = suggestionsContainer.querySelector('.suggestion-item.active');
+            
+            if (items.length === 0) return;
+            
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                
+                if (!current) {
+                    items[e.key === 'ArrowDown' ? 0 : items.length - 1].classList.add('active');
+                } else {
+                    const currentIndex = Array.from(items).indexOf(current);
+                    current.classList.remove('active');
+                    
+                    let nextIndex;
+                    if (e.key === 'ArrowDown') {
+                        nextIndex = currentIndex + 1 >= items.length ? 0 : currentIndex + 1;
+                    } else {
+                        nextIndex = currentIndex - 1 < 0 ? items.length - 1 : currentIndex - 1;
+                    }
+                    
+                    items[nextIndex].classList.add('active');
+                }
+            } else if (e.key === 'Enter' && current) {
+                e.preventDefault();
+                window.location.href = current.href;
+            }
+        });
+    });
+});
+</script>

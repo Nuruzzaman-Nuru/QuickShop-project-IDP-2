@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="banner-section">
+    <div class="banner-content">
+        <h1 class="banner-title">SMART WEARABLE.</h1>
+        <div class="banner-subtitle">UP to 80% OFF</div>
+        <p>Best Deal Online on smart watches</p>
+        <a href="{{ url_for('shop.index') }}" class="btn btn-light btn-lg mt-3">Shop Now</a>
+    </div>
+    <div class="banner-dots">
+        <span class="banner-dot active"></span>
+        <span class="banner-dot"></span>
+        <span class="banner-dot"></span>
+        <span class="banner-dot"></span>
+        <span class="banner-dot"></span>
+    </div>
+</div>
+
+<!-- Hero Section -->
+<section class="hero bg-light py-5">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-12">
+                <div class="d-flex gap-3 justify-content-center">
+                    <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg">Get Started</a>
+                    <a href="{{ url_for('shop.index') }}" class="btn btn-outline-primary btn-lg">Browse Shops</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="features py-5">
+    <div class="container">
+        <h2 class="text-center mb-5">Why Choose QuickShop?</h2>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center">
+                        <i class="bi bi-shop display-4 text-primary mb-3"></i>
+                        <h3 class="h4">Local Shop Discovery</h3>
+                        <p class="text-muted">Find the best local shops near you with real-time inventory.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center">
+                        <i class="bi bi-tags display-4 text-primary mb-3"></i>
+                        <h3 class="h4">Best Prices</h3>
+                        <p class="text-muted">Get competitive prices from local shops in your area.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center">
+                        <i class="bi bi-truck display-4 text-primary mb-3"></i>
+                        <h3 class="h4">Quick Delivery</h3>
+                        <p class="text-muted">Get your purchases delivered fast and track them in real-time.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Categories Section -->
+<section class="categories py-5 bg-light">
+    <div class="container">
+        <h2 class="text-center mb-5">Popular Categories</h2>
+        <div class="row g-4">
+            <div class="col-6 col-md-3">
+                <a href="#" class="text-decoration-none">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <i class="bi bi-phone display-4 text-primary mb-3"></i>
+                            <h3 class="h5">Electronics</h3>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="#" class="text-decoration-none">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <i class="bi bi-cart4 display-4 text-primary mb-3"></i>
+                            <h3 class="h5">Groceries</h3>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="#" class="text-decoration-none">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <i class="bi bi-gift display-4 text-primary mb-3"></i>
+                            <h3 class="h5">Fashion</h3>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="#" class="text-decoration-none">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <i class="bi bi-house-heart display-4 text-primary mb-3"></i>
+                            <h3 class="h5">Home & Living</h3>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="cta py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8 text-center">
+                <h2 class="mb-4">Ready to Start Shopping?</h2>
+                <p class="lead mb-4">Join thousands of happy customers who are already saving time and money with QuickShop.</p>
+                <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg">Create Account</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% include 'includes/footer.html' %}
+{% endblock %}

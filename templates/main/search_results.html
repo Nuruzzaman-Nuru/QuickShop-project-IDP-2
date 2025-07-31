@@ -1,0 +1,511 @@
+{% extends "base.html" %}
+
+{% block title %}Search Results{% endblock %}
+
+{% block extra_head %}
+    <script src="/static/js/maps.js"></script>
+    <script>
+        let searchLocation = {
+            lat: {{ search_lat|default(23.8103, true)|float }},
+            lng: {{ search_lng|default(90.4125, true)|float }}
+        };
+
+        let shopLocations = [];
+        {% if shops %}
+        {% for shop in shops %}
+            {% if shop.location_lat and shop.location_lng %}
+            shopLocations.push({
+                id: {{ shop.id }},
+                name: "{{ shop.name|escape }}",
+                lat: {{ shop.location_lat }},
+                lng: {{ shop.location_lng }},
+                distance: {{ "%.1f"|format(shop.distance|default(0)) }}
+            });
+            {% endif %}
+        {% endfor %}
+        {% endif %}
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ config.GOOGLE_MAPS_API_KEY }}&callback=initMap" async defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <form class="search-form" method="GET" action="{{ url_for('main.search') }}">
+                <div class="input-group">
+                    <input type="text" class="form-control" name="q" value="{{ query }}" 
+                           placeholder="Search for shops, products or locations...">
+                    <select class="form-select" name="type" style="max-width: 150px;">
+                        <option value="all" {% if search_type == 'all' %}selected{% endif %}>All</option>
+                        <option value="shops" {% if search_type == 'shops' %}selected{% endif %}>Shops Only</option>
+                        <option value="products" {% if search_type == 'products' %}selected{% endif %}>Products Only</option>
+                    </select>
+                    <button class="btn btn-primary" type="submit">
+                        <i class="bi bi-search"></i> Search
+                    </button>
+                </div>
+                
+                <!-- Location Search -->
+                <div class="mt-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="useLocation" 
+                               {% if search_lat and search_lng %}checked{% endif %}>
+                        <label class="form-check-label" for="useLocation">Search near me</label>
+                    </div>
+                    <div id="locationFields" class="row g-3 mt-2" {% if not search_lat or not search_lng %}style="display: none;"{% endif %}>
+                        <div class="col-md-6">
+                            <input type="text" class="form-control" id="locationInput" 
+                                   placeholder="Enter location or use current location">
+                        </div>
+                        <div class="col-md-4">
+                            <select class="form-select" name="distance">
+                                <option value="5" {% if search_distance == 5 %}selected{% endif %}>Within 5 km</option>
+                                <option value="10" {% if search_distance == 10 %}selected{% endif %}>Within 10 km</option>
+                                <option value="20" {% if search_distance == 20 %}selected{% endif %}>Within 20 km</option>
+                                <option value="50" {% if search_distance == 50 %}selected{% endif %}>Within 50 km</option>
+                            </select>
+                        </div>
+                        <input type="hidden" name="lat" id="lat" value="{{ search_lat or '' }}">
+                        <input type="hidden" name="lng" id="lng" value="{{ search_lng or '' }}">
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Map Container -->
+    {% if search_lat and search_lng %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div id="mapError" class="alert alert-warning" style="display: none;">
+                        <i class="bi bi-exclamation-triangle"></i> 
+                        Unable to load map. Please check your internet connection or try again later.
+                    </div>
+                    <div class="map-container">
+                        <div id="map"></div>
+                        <div id="mapLoading" class="d-flex justify-content-center align-items-center" 
+                             style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.8);">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading map...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <!-- Filters Sidebar -->
+        <div class="col-md-3">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Search Options</h5>
+                </div>
+                <div class="card-body">
+                    <form id="filterForm" method="GET" action="{{ url_for('main.search') }}">
+                        <input type="hidden" name="q" value="{{ query }}">
+                        
+                        <!-- Search Type -->
+                        <div class="mb-3">
+                            <label class="form-label">Search In</label>
+                            <select class="form-select" name="type" onchange="this.form.submit()">
+                                <option value="all" {% if search_type == 'all' %}selected{% endif %}>All</option>
+                                <option value="products" {% if search_type == 'products' %}selected{% endif %}>Products Only</option>
+                                <option value="shops" {% if search_type == 'shops' %}selected{% endif %}>Shops Only</option>
+                            </select>
+                        </div>
+
+                        {% if search_type != 'shops' %}
+                        <!-- Category Filter -->
+                        <div class="mb-3">
+                            <label class="form-label">Category</label>
+                            <select class="form-select" name="category">
+                                <option value="">All Categories</option>
+                                {% for category in categories %}
+                                    <option value="{{ category }}" {% if category == current_category %}selected{% endif %}>
+                                        {{ category }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Price Range Filter -->
+                        <div class="mb-3">
+                            <label class="form-label">Price Range</label>
+                            <div class="input-group mb-2">
+                                <span class="input-group-text">৳</span>
+                                <input type="number" class="form-control" name="min_price" 
+                                       placeholder="Min" value="{{ min_price or '' }}" min="0">
+                            </div>
+                            <div class="input-group">
+                                <span class="input-group-text">৳</span>
+                                <input type="number" class="form-control" name="max_price" 
+                                       placeholder="Max" value="{{ max_price or '' }}" min="0">
+                            </div>
+                        </div>
+
+                        <!-- Sort Options -->
+                        <div class="mb-3">
+                            <label class="form-label">Sort By</label>
+                            <select class="form-select" name="sort">
+                                <option value="relevance" {% if current_sort == 'relevance' %}selected{% endif %}>Relevance</option>
+                                <option value="price_low" {% if current_sort == 'price_low' %}selected{% endif %}>Price: Low to High</option>
+                                <option value="price_high" {% if current_sort == 'price_high' %}selected{% endif %}>Price: High to Low</option>
+                                <option value="newest" {% if current_sort == 'newest' %}selected{% endif %}>Newest First</option>
+                            </select>
+                        </div>
+                        {% endif %}
+
+                        <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Results -->
+        <div class="col-md-9">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Search Results {% if query %}for "{{ query }}"{% endif %}</h2>
+            </div>
+
+            {% if shops and search_type in ['all', 'shops'] %}
+            <div class="mb-4">
+                <h3 class="h4 mb-3">Shops {% if search_lat and search_lng %}Near You{% endif %} ({{ shops_pagination.total if shops_pagination else 0 }})</h3>
+                <div class="row">
+                    {% for shop in shops %}
+                        <div class="col-md-6 mb-4">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between">
+                                        <h5 class="card-title">
+                                            {% if query %}
+                                                {{ shop.name|replace(query, '<mark>' + query + '</mark>')|safe }}
+                                            {% else %}
+                                                {{ shop.name }}
+                                            {% endif %}
+                                        </h5>
+                                        {% if shop.distance %}
+                                        <span class="badge bg-primary">{{ "%.1f"|format(shop.distance) }} km</span>
+                                        {% endif %}
+                                    </div>
+                                    <p class="card-text">
+                                        {% if query %}
+                                            {{ shop.description[:150]|replace(query, '<mark>' + query + '</mark>')|safe }}
+                                        {% else %}
+                                            {{ shop.description[:150] }}
+                                        {% endif %}
+                                        {% if shop.description|length > 150 %}...{% endif %}
+                                    </p>
+                                    <p class="card-text">
+                                        <small class="text-muted">
+                                            <i class="bi bi-geo-alt"></i> {{ shop.address }}
+                                        </small>
+                                    </p>
+                                </div>
+                                <div class="card-footer bg-transparent border-top-0">
+                                    <a href="{{ url_for('shop.view', shop_id=shop.id) }}" class="btn btn-primary">Visit Shop</a>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Shops Pagination -->
+                {% if shops_pagination and shops_pagination.pages > 1 %}
+                <nav aria-label="Shop results navigation" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if shops_pagination.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('main.search', page=shops_pagination.prev_num, **dict(request.args, **{'type': search_type})) }}" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        
+                        {% for page in shops_pagination.iter_pages(left_edge=2, left_current=2, right_current=3, right_edge=2) %}
+                            {% if page %}
+                                <li class="page-item {{ 'active' if page == shops_pagination.page else '' }}">
+                                    <a class="page-link" href="{{ url_for('main.search', page=page, **dict(request.args, **{'type': search_type})) }}">{{ page }}</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if shops_pagination.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('main.search', page=shops_pagination.next_num, **dict(request.args, **{'type': search_type})) }}" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            </div>
+            {% endif %}
+            
+            {% if products and search_type in ['all', 'products'] %}
+            <div>
+                <h3 class="h4 mb-3">Products ({{ products_pagination.total if products_pagination else 0 }})</h3>
+                <div class="row">
+                    {% for product in products %}
+                        <div class="col-md-4 mb-4">
+                            <div class="card h-100 product-card">
+                                <span class="date-badge">May 5, 2025</span>
+                                {% if product.image_url %}
+                                    <img src="{{ url_for('static', filename='images/products/' + product.image_url) }}" 
+                                         class="card-img-top" alt="{{ product.name }}">
+                                {% endif %}
+                                <div class="card-body">
+                                    <h5 class="card-title">
+                                        {% if query %}
+                                            {{ product.name|replace(query, '<mark>' + query + '</mark>')|safe }}
+                                        {% else %}
+                                            {{ product.name }}
+                                        {% endif %}
+                                    </h5>
+                                    <p class="card-text">
+                                        {% if query %}
+                                            {{ product.description[:100]|replace(query, '<mark>' + query + '</mark>')|safe }}
+                                        {% else %}
+                                            {{ product.description[:100] }}
+                                        {% endif %}
+                                        {% if product.description|length > 100 %}...{% endif %}
+                                    </p>
+                                    <p class="card-text">
+                                        <strong class="text-primary">৳{{ "%.2f"|format(product.price) }}</strong>
+                                        {% if product.category %}
+                                            <span class="badge bg-secondary ms-2">{{ product.category }}</span>
+                                        {% endif %}
+                                    </p>
+                                    <p class="card-text">
+                                        <small class="text-muted">
+                                            Sold by <a href="{{ url_for('shop.view', shop_id=product.shop.id) }}">{{ product.shop.name }}</a>
+                                        </small>
+                                    </p>
+                                </div>
+                                <div class="card-footer bg-transparent border-top-0">
+                                    <a href="{{ url_for('shop.view', shop_id=product.shop.id) }}" class="btn btn-primary">View Details</a>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Products Pagination -->
+                {% if products_pagination and products_pagination.pages > 1 %}
+                <nav aria-label="Product results navigation" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if products_pagination.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('main.search', page=products_pagination.prev_num, **dict(request.args, **{'type': search_type})) }}" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        
+                        {% for page in products_pagination.iter_pages(left_edge=2, left_current=2, right_current=3, right_edge=2) %}
+                            {% if page %}
+                                <li class="page-item {{ 'active' if page == products_pagination.page else '' }}">
+                                    <a class="page-link" href="{{ url_for('main.search', page=page, **dict(request.args, **{'type': search_type})) }}">{{ page }}</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if products_pagination.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('main.search', page=products_pagination.next_num, **dict(request.args, **{'type': search_type})) }}" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if not products and not shops %}
+                <div class="no-results text-center py-5">
+                    <div class="mb-4">
+                        <i class="bi bi-search display-1 text-muted"></i>
+                    </div>
+                    <h3 class="mb-3">No Results Found</h3>
+                    <p class="text-muted mb-4">
+                        {% if query %}
+                            We couldn't find any matches for "{{ query }}"
+                            {% if search_type != 'all' %}
+                                in {{ search_type }}
+                            {% endif %}
+                        {% else %}
+                            No items match the selected filters
+                        {% endif %}
+                    </p>
+                    <div class="suggestions">
+                        <h5 class="h6 mb-3">Suggestions:</h5>
+                        <ul class="list-unstyled">
+                            <li><i class="bi bi-check2 me-2"></i>Check for spelling errors</li>
+                            <li><i class="bi bi-check2 me-2"></i>Try using more general keywords</li>
+                            {% if search_type != 'all' %}
+                                <li>
+                                    <i class="bi bi-check2 me-2"></i>
+                                    <a href="{{ url_for('main.search', q=query, type='all') }}">Search in all categories</a>
+                                </li>
+                            {% endif %}
+                            {% if min_price or max_price %}
+                                <li>
+                                    <i class="bi bi-check2 me-2"></i>
+                                    <a href="{{ url_for('main.search', q=query, type=search_type) }}">Remove price filters</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                        <div class="mt-4">
+                            <a href="{{ url_for('shop.index') }}" class="btn btn-primary">
+                                Browse All Shops
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://maps.googleapis.com/maps/api/js?key={{ config.GOOGLE_MAPS_API_KEY }}&libraries=places&callback=initMap" async defer></script>
+<script>
+let map;
+let markers = [];
+let bounds;
+
+function initMap() {
+    try {
+        const searchLocation = { 
+            lat: {{ search_lat|default(23.8103, true)|float }}, 
+            lng: {{ search_lng|default(90.4125, true)|float }}
+        };
+        
+        map = new google.maps.Map(document.getElementById('map'), {
+            zoom: 12,
+            center: searchLocation,
+            mapTypeControl: true,
+            fullscreenControl: true,
+            streetViewControl: false,
+            gestureHandling: 'cooperative',
+            mapTypeControlOptions: {
+                style: google.maps.MapTypeControlStyle.DROPDOWN_MENU
+            }
+        });
+        
+        bounds = new google.maps.LatLngBounds();
+        
+        // Add search location marker with custom icon
+        const searchMarker = new google.maps.Marker({
+            position: searchLocation,
+            map: map,
+            title: 'Search Location',
+            icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 10,
+                fillColor: '#4285F4',
+                fillOpacity: 1,
+                strokeColor: '#ffffff',
+                strokeWeight: 2
+            }
+        });
+        
+        bounds.extend(searchLocation);
+        
+        // Add shop markers with improved info windows
+        {% if shops %}
+        {% for shop in shops %}
+            {% if shop.location_lat and shop.location_lng %}
+            const shopLocation = {
+                lat: {{ shop.location_lat }},
+                lng: {{ shop.location_lng }}
+            };
+            
+            const marker = new google.maps.Marker({
+                position: shopLocation,
+                map: map,
+                title: '{{ shop.name|escapejs }}',
+                animation: google.maps.Animation.DROP
+            });
+            
+            const infowindow = new google.maps.InfoWindow({
+                content: `
+                    <div class="p-3">
+                        <h6 class="mb-1">{{ shop.name|escapejs }}</h6>
+                        <p class="mb-1 small text-muted">{{ shop.address|escapejs }}</p>
+                        {% if shop.distance %}
+                        <p class="mb-2 small"><i class="bi bi-geo-alt"></i> {{ "%.1f"|format(shop.distance) }} km away</p>
+                        {% endif %}
+                        <a href="{{ url_for('shop.view', shop_id=shop.id) }}" 
+                           class="btn btn-sm btn-primary">Visit Shop</a>
+                    </div>
+                `
+            });
+            
+            marker.addListener('click', () => {
+                // Close other info windows
+                markers.forEach(m => m.infowindow.close());
+                infowindow.open(map, marker);
+            });
+            
+            markers.push({marker, infowindow});
+            bounds.extend(shopLocation);
+            {% endif %}
+        {% endfor %}
+        {% endif %}
+        
+        // Fit map to show all markers with padding
+        map.fitBounds(bounds, {padding: 50});
+        
+        // Set minimum zoom level for better visibility
+        const listener = google.maps.event.addListener(map, 'idle', function() {
+            if (map.getZoom() > 15) {
+                map.setZoom(15);
+            }
+            google.maps.event.removeListener(listener);
+        });
+        
+        // Add responsive handling
+        google.maps.event.addDomListener(window, 'resize', function() {
+            map.fitBounds(bounds, {padding: 50});
+        });
+        
+        // Hide error message if map loads successfully
+        const mapError = document.getElementById('mapError');
+        if (mapError) mapError.style.display = 'none';
+    } catch (error) {
+        console.error('Error initializing map:', error);
+        const mapError = document.getElementById('mapError');
+        if (mapError) mapError.style.display = 'block';
+    }
+}
+
+// Handle Google Maps loading error
+function gm_authFailure() {
+    const mapError = document.getElementById('mapError');
+    if (mapError) mapError.style.display = 'block';
+}
+
+// Initialize map only if container exists
+if (document.getElementById('map')) {
+    if (typeof google === 'undefined') {
+        loadGoogleMaps();
+    } else {
+        initMap();
+    }
+}
+</script>
+{% endblock %}

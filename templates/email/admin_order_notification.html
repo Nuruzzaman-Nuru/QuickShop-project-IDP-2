@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #f8f9fa; padding: 20px; text-align: center; }
+        .content { padding: 20px; }
+        .status { display: inline-block; padding: 5px 10px; border-radius: 4px; font-weight: bold; }
+        .status-change { background: #e2e3e5; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .details { background: #f8f9fa; padding: 15px; border-radius: 4px; margin: 15px 0; }
+        .footer { text-align: center; padding: 20px; font-size: 0.9em; color: #6c757d; }
+        .button { display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Order Update Notification</h2>
+            <p>Admin Alert</p>
+        </div>
+        
+        <div class="content">
+            <h3>Order #{{ order.id }} Status Update</h3>
+            
+            {% if change %}
+            <div class="status-change">
+                <p><strong>Status Change:</strong></p>
+                <p>From: {{ change.old if change.old else 'New Order' }}</p>
+                <p>To: {{ change.new }}</p>
+                <p>Action: {{ change.action }}</p>
+            </div>
+            {% endif %}
+            
+            <div class="details">
+                <h4>Order Details</h4>
+                <p><strong>Customer:</strong> {{ order.customer.username }} ({{ order.customer.email }})</p>
+                <p><strong>Shop:</strong> {{ order.shop.name }}</p>
+                <p><strong>Total Amount:</strong> ${{ "%.2f"|format(order.total_amount) }}</p>
+                <p><strong>Created:</strong> {{ order.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                {% if order.delivery_person %}
+                    <p><strong>Delivery Person:</strong> {{ order.delivery_person.username }}</p>
+                {% endif %}
+                
+                <h4>Items:</h4>
+                <ul>
+                    {% for item in order.items %}
+                    <li>
+                        {{ item.quantity }}x {{ item.product.name }} 
+                        ({% if item.negotiated_price %}
+                            ${{ "%.2f"|format(item.negotiated_price) }} each - Negotiated Price
+                        {% else %}
+                            ${{ "%.2f"|format(item.price) }} each
+                        {% endif %})
+                    </li>
+                    {% endfor %}
+                </ul>
+                
+                <h4>Delivery Information:</h4>
+                <p><strong>Address:</strong> {{ order.delivery_address }}</p>
+                {% if order.delivery_lat and order.delivery_lng %}
+                    <p><strong>Coordinates:</strong> {{ order.delivery_lat }}, {{ order.delivery_lng }}</p>
+                {% endif %}
+                {% if order.estimated_delivery_time %}
+                    <p><strong>Estimated Delivery:</strong> {{ order.estimated_delivery_time.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                {% endif %}
+                {% if order.special_instructions %}
+                    <p><strong>Special Instructions:</strong> {{ order.special_instructions }}</p>
+                {% endif %}
+            </div>
+            
+            <p>
+                <a href="{{ url_for('admin.order_details', order_id=order.id, _external=True) }}" class="button">
+                    View Order Details
+                </a>
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p>This is an automated admin notification.</p>
+            <p>Please take appropriate action if necessary.</p>
+        </div>
+    </div>
+</body>
+</html>

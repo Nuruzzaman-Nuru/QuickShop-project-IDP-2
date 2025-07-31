@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}Profile Settings{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <img src="{{ current_user.avatar_url or url_for('static', filename='images/default-avatar.png') }}" 
+                         class="rounded-circle mb-3" alt="Profile Picture" style="width: 150px; height: 150px; object-fit: cover;">
+                    <h4>{{ current_user.name }}</h4>
+                    <p class="text-muted">Member since {{ current_user.created_at.strftime('%B %Y') }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-0">Profile Settings</h3>
+                </div>
+                <div class="card-body">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }} alert-dismissible fade show">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <form method="POST" enctype="multipart/form-data">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Full Name</label>
+                            <input type="text" class="form-control" id="name" name="name" 
+                                   value="{{ current_user.name }}" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email" 
+                                   value="{{ current_user.email }}" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="phone" class="form-label">Phone Number</label>
+                            <input type="tel" class="form-control" id="phone" name="phone" 
+                                   value="{{ current_user.phone }}" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="avatar" class="form-label">Profile Picture</label>
+                            <input type="file" class="form-control" id="avatar" name="avatar" 
+                                   accept="image/*">
+                            <small class="form-text text-muted">
+                                Maximum file size: 5MB. Supported formats: JPG, PNG, GIF
+                            </small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="address" class="form-label">Default Delivery Address</label>
+                            <input type="text" class="form-control" id="address" name="address" 
+                                   value="{{ current_user.address }}">
+                            <input type="hidden" id="latitude" name="latitude" value="{{ current_user.location_lat }}">
+                            <input type="hidden" id="longitude" name="longitude" value="{{ current_user.location_lng }}">
+                        </div>
+
+                        <div id="map" style="height: 300px;" class="mb-3"></div>
+
+                        <hr class="my-4">
+
+                        <h4>Change Password</h4>
+                        <div class="mb-3">
+                            <label for="current_password" class="form-label">Current Password</label>
+                            <input type="password" class="form-control" id="current_password" 
+                                   name="current_password">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="new_password" class="form-label">New Password</label>
+                            <input type="password" class="form-control" id="new_password" 
+                                   name="new_password">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="confirm_password" class="form-label">Confirm New Password</label>
+                            <input type="password" class="form-control" id="confirm_password" 
+                                   name="confirm_password">
+                        </div>
+
+                        <div class="alert alert-info">
+                            <small>Leave password fields empty if you don't want to change your password</small>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <h4>Notification Preferences</h4>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="email_notifications" 
+                                       name="email_notifications" {% if current_user.email_notifications %}checked{% endif %}>
+                                <label class="form-check-label" for="email_notifications">
+                                    Receive order updates via email
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="sms_notifications" 
+                                       name="sms_notifications" {% if current_user.sms_notifications %}checked{% endif %}>
+                                <label class="form-check-label" for="sms_notifications">
+                                    Receive order updates via SMS
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://maps.googleapis.com/maps/api/js?key={{ config['GOOGLE_MAPS_API_KEY'] }}&libraries=places"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const addressInput = document.getElementById('address');
+    const latInput = document.getElementById('latitude');
+    const lngInput = document.getElementById('longitude');
+    const mapDiv = document.getElementById('map');
+
+    const map = new google.maps.Map(mapDiv, {
+        zoom: 13,
+        center: { 
+            lat: parseFloat(latInput.value) || 23.8103, 
+            lng: parseFloat(lngInput.value) || 90.4125 
+        }
+    });
+
+    const marker = new google.maps.Marker({
+        map: map,
+        draggable: true,
+        position: map.getCenter()
+    });
+
+    const autocomplete = new google.maps.places.Autocomplete(addressInput);
+    autocomplete.bindTo('bounds', map);
+
+    autocomplete.addListener('place_changed', function() {
+        const place = autocomplete.getPlace();
+        if (!place.geometry) return;
+
+        if (place.geometry.viewport) {
+            map.fitBounds(place.geometry.viewport);
+        } else {
+            map.setCenter(place.geometry.location);
+            map.setZoom(17);
+        }
+
+        marker.setPosition(place.geometry.location);
+        latInput.value = place.geometry.location.lat();
+        lngInput.value = place.geometry.location.lng();
+    });
+
+    marker.addListener('dragend', function() {
+        const position = marker.getPosition();
+        latInput.value = position.lat();
+        lngInput.value = position.lng();
+        
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({ location: position }, function(results, status) {
+            if (status === 'OK' && results[0]) {
+                addressInput.value = results[0].formatted_address;
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

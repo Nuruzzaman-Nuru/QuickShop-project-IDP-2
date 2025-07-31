@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+
+{% block title %}Delivery Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Today's Stats</h5>
+                    <p class="mb-1">Completed Deliveries: {{ completed_today }}</p>
+                    <p class="mb-0">Total Earnings: ${{ "%.2f"|format(total_earnings) }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Current Location</h5>
+                    <div id="locationStatus" class="alert alert-info">
+                        Waiting for location updates...
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="locationTracking">
+                        <label class="form-check-label" for="locationTracking">Enable Location Tracking</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if current_delivery %}
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Current Delivery</h5>
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Order #{{ current_delivery.id }}</strong></p>
+                    <p><strong>Shop:</strong> {{ current_delivery.shop.name }}</p>
+                    <p><strong>Delivery Address:</strong> {{ current_delivery.delivery_address }}</p>
+                    <div class="mb-3">
+                        <strong>Items:</strong>
+                        <ul class="list-unstyled">
+                            {% for item in current_delivery.items %}
+                            <li>{{ item.quantity }}x {{ item.product.name }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% if current_delivery.special_instructions %}
+                    <div class="alert alert-warning">
+                        <strong>Special Instructions:</strong><br>
+                        {{ current_delivery.special_instructions }}
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6">
+                    <div id="deliveryMap" style="height: 300px; width: 100%;"></div>
+                    <div class="mt-3">
+                        <form method="POST" action="/delivery/delivery/{{ current_delivery.id }}/update-status">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button class="btn btn-success me-2" type="submit" name="status" value="completed">
+                                Mark as Delivered
+                            </button>
+                        </form>
+                        <a href="https://www.google.com/maps/dir/?api=1&destination={{ current_delivery.delivery_lat }},{{ current_delivery.delivery_lng }}" 
+                           class="btn btn-primary" target="_blank">
+                            Open in Google Maps
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Available Orders ({{ available_orders|length }})</h5>
+                </div>
+                <div class="card-body">
+                    {% if available_orders %}
+                    <div class="list-group">
+                        {% for order in available_orders %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">Order #{{ order.id }}</h6>
+                                    <p class="mb-1">{{ order.shop.name }}</p>
+                                    <small class="text-muted">
+                                        {% if order.distance %}
+                                            {{ "%.1f"|format(order.distance) }} km away
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                <form method="POST" action="/delivery/accept/{{ order.id }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <button class="btn btn-primary accept-delivery" type="submit">
+                                        Accept
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">No orders available at the moment.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Completed Deliveries</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>Shop</th>
+                                    <th>Completed At</th>
+                                    <th>Earnings</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for delivery in completed_deliveries %}
+                                <tr>
+                                    <td>#{{ delivery.id }}</td>
+                                    <td>{{ delivery.shop.name }}</td>
+                                    <td>{{ delivery.updated_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>${{ "%.2f"|format(delivery.delivery_fee) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://maps.googleapis.com/maps/api/js?key={{ config.GOOGLE_MAPS_API_KEY }}"></script>
+<script>
+let map;
+let marker;
+let watchId;
+const locationCheckbox = document.getElementById('locationTracking');
+const locationStatus = document.getElementById('locationStatus');
+
+{% if current_delivery %}
+function initMap() {
+    const deliveryLocation = {
+        lat: {{ current_delivery.delivery_lat }},
+        lng: {{ current_delivery.delivery_lng }}
+    };
+    const shopLocation = {
+        lat: {{ current_delivery.shop.location_lat }},
+        lng: {{ current_delivery.shop.location_lng }}
+    };
+    
+    map = new google.maps.Map(document.getElementById('deliveryMap'), {
+        zoom: 13,
+        center: deliveryLocation
+    });
+    
+    // Add delivery location marker
+    new google.maps.Marker({
+        position: deliveryLocation,
+        map: map,
+        icon: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
+        title: 'Delivery Location'
+    });
+    
+    // Add shop marker
+    new google.maps.Marker({
+        position: shopLocation,
+        map: map,
+        icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
+        title: '{{ current_delivery.shop.name }}'
+    });
+    
+    // Add delivery person marker
+    marker = new google.maps.Marker({
+        map: map,
+        icon: 'http://maps.google.com/mapfiles/ms/icons/yellow-dot.png',
+        title: 'Your Location'
+    });
+    
+    // Draw route
+    const directionsService = new google.maps.DirectionsService();
+    const directionsRenderer = new google.maps.DirectionsRenderer({
+        suppressMarkers: true
+    });
+    directionsRenderer.setMap(map);
+    
+    directionsService.route({
+        origin: shopLocation,
+        destination: deliveryLocation,
+        travelMode: google.maps.TravelMode.DRIVING
+    }, function(response, status) {
+        if (status === 'OK') {
+            directionsRenderer.setDirections(response);
+        }
+    });
+}
+initMap();
+{% endif %}
+
+// Location tracking
+locationCheckbox.addEventListener('change', function() {
+    if (this.checked) {
+        startLocationTracking();
+    } else {
+        stopLocationTracking();
+    }
+});
+
+function startLocationTracking() {
+    if ("geolocation" in navigator) {
+        locationStatus.className = 'alert alert-info';
+        locationStatus.textContent = 'Getting location...';
+        
+        watchId = navigator.geolocation.watchPosition(
+            updateLocation,
+            handleLocationError,
+            {
+                enableHighAccuracy: true,
+                timeout: 5000,
+                maximumAge: 0
+            }
+        );
+    } else {
+        locationStatus.className = 'alert alert-danger';
+        locationStatus.textContent = 'Geolocation is not supported by your browser';
+        locationCheckbox.checked = false;
+    }
+}
+
+function stopLocationTracking() {
+    if (watchId) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+    }
+    locationStatus.className = 'alert alert-warning';
+    locationStatus.textContent = 'Location tracking disabled';
+}
+
+function updateLocation(position) {
+    const { latitude, longitude } = position.coords;
+    locationStatus.className = 'alert alert-success';
+    locationStatus.textContent = `Location updated: ${latitude}, ${longitude}`;
+    
+    if (marker) {
+        marker.setPosition({ lat: latitude, lng: longitude });
+    }
+    
+    {% if current_delivery %}
+    // Update delivery status with new location
+    fetch(`/delivery/delivery/{{ current_delivery.id }}/update-status`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            status: 'delivering',
+            lat: latitude,
+            lng: longitude
+        })
+    });
+    {% endif %}
+}
+
+function handleLocationError(error) {
+    locationStatus.className = 'alert alert-danger';
+    locationStatus.textContent = `Error getting location: ${error.message}`;
+    locationCheckbox.checked = false;
+}
+
+// Handle order status updates
+function updateOrderStatus(orderId, status) {
+    if (confirm(`Are you sure you want to mark this order as ${status}?`)) {
+        fetch(`/delivery/delivery/${orderId}/update-status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ status: status })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                location.reload();
+            } else {
+                alert(data.message || 'Error updating order status');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error updating order status');
+        });
+    }
+}
+
+// Handle delivery acceptance
+document.querySelectorAll('.accept-delivery').forEach(button => {
+    button.addEventListener('click', function() {
+        const orderId = this.dataset.orderId;
+        fetch(`/delivery/accept/${orderId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                location.reload();
+            } else {
+                alert(data.message || 'Error accepting delivery');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error accepting delivery');
+        });
+    });
+});
+</script>
+{% endblock %}

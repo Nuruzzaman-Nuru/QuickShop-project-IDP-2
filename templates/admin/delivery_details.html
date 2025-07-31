@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}Assign Delivery - Order #{{ order.id }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-0">Assign Delivery Person</h3>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <div class="mb-4">
+                            <h5>Order Details</h5>
+                            <p><strong>Order #:</strong> {{ order.id }}</p>
+                            <p><strong>Customer:</strong> {{ order.customer.username }}</p>
+                            <p><strong>Delivery Address:</strong> {{ order.delivery_address }}</p>
+                            <p><strong>Total Amount:</strong> ৳{{ "%.2f"|format(order.total_amount) }}</p>
+                        </div>
+
+                        <div class="mb-4">
+                            <h5>Available Delivery Personnel</h5>
+                            {% if delivery_persons %}
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Distance</th>
+                                            <th>Current Load</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for person in delivery_persons %}
+                                        <tr>
+                                            <td>{{ person.username }}</td>
+                                            <td>{{ "%.1f"|format(person.distance) }} km</td>
+                                            <td>{{ person.active_deliveries }} orders</td>
+                                            <td>
+                                                <button type="submit" name="delivery_id" value="{{ person.id }}" 
+                                                        class="btn btn-primary btn-sm">
+                                                    Assign
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-warning">
+                                No delivery personnel available at the moment
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('admin.orders') }}" class="btn btn-secondary">Back to Orders</a>
+                            {% if not order.delivery_person_id %}
+                            <button type="button" class="btn btn-success" data-bs-toggle="modal" 
+                                    data-bs-target="#findDeliveryModal">
+                                Find More Delivery Personnel
+                            </button>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Find Delivery Modal -->
+<div class="modal fade" id="findDeliveryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Find Delivery Personnel</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="findDeliveryForm" method="POST" action="{{ url_for('admin.find_delivery_person', order_id=order.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <div class="mb-3">
+                        <label for="max_distance" class="form-label">Maximum Distance (km)</label>
+                        <input type="number" class="form-control" id="max_distance" name="max_distance" 
+                               value="10" min="1" max="50">
+                    </div>
+                    <div class="mb-3">
+                        <label for="max_load" class="form-label">Maximum Active Deliveries</label>
+                        <input type="number" class="form-control" id="max_load" name="max_load" 
+                               value="5" min="1" max="10">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Search</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const findDeliveryForm = document.getElementById('findDeliveryForm');
+    
+    findDeliveryForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        try {
+            const response = await fetch(this.action, {
+                method: 'POST',
+                body: new FormData(this)
+            });
+            
+            const result = await response.json();
+            
+            if (result.status === 'success') {
+                location.reload();
+            } else {
+                alert(result.message || 'Error finding delivery personnel');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error finding delivery personnel');
+        }
+    });
+});
+</script>
+{% endblock %}

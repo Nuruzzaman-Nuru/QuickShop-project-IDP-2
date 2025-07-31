@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+
+{% block title %}Shop Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Welcome to your Shop Dashboard</h2>
+    
+    <!-- Quick Stats -->
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="card text-white bg-primary mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Products</h5>
+                    <p class="display-4">{{ products_count }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-success mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Active Orders</h5>
+                    <p class="display-4">{{ active_orders_count }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-info mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Total Revenue</h5>
+                    <p class="display-4">৳{{ "%.2f"|format(total_revenue) }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Management Section -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Manage Products</h5>
+            <div class="d-flex gap-2">
+                <form class="search-form d-flex" action="{{ url_for('main.search') }}" method="GET">
+                    <input type="hidden" name="type" value="products">
+                    <input type="hidden" name="shop_id" value="{{ shop.id }}">
+                    <div class="input-group">
+                        <input class="form-control search-input" type="search" name="q" 
+                               placeholder="Search your products..." 
+                               value="{{ request.args.get('q', '') }}"
+                               aria-label="Search" autocomplete="off">
+                        <button class="btn btn-outline-primary" type="submit">
+                            <i class="bi bi-search"></i>
+                        </button>
+                        <div class="search-suggestions dropdown-menu"></div>
+                    </div>
+                </form>
+                <a href="{{ url_for('shop.add_product', shop_id=shop.id) }}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Add New Product
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Price</th>
+                            <th>Stock</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in shop.products %}
+                            <tr>
+                                <td>{{ product.name }}</td>
+                                <td>{{ product.category or 'N/A' }}</td>
+                                <td>৳{{ "%.2f"|format(product.price) }}</td>
+                                <td>
+                                    {% if product.stock > 10 %}
+                                        <span class="text-success">{{ product.stock }}</span>
+                                    {% elif product.stock > 0 %}
+                                        <span class="text-warning">{{ product.stock }}</span>
+                                    {% else %}
+                                        <span class="text-danger">Out of Stock</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if product.is_negotiable() %}
+                                        <span class="badge bg-info">Negotiable</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group">
+                                        <a href="{{ url_for('shop.edit_product', product_id=product.id) }}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <button class="btn btn-sm btn-outline-danger delete-product" 
+                                                data-product-id="{{ product.id }}"
+                                                data-product-name="{{ product.name }}">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Orders Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Recent Orders</h5>
+        </div>
+        <div class="card-body">
+            {% if recent_orders %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Customer</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in recent_orders %}
+                                <tr>
+                                    <td>#{{ order.id }}</td>
+                                    <td>{{ order.customer.username }}</td>
+                                    <td>৳{{ "%.2f"|format(order.total_amount) }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ {
+                                            'pending': 'warning',
+                                            'confirmed': 'info',
+                                            'delivering': 'primary',
+                                            'completed': 'success',
+                                            'cancelled': 'danger'
+                                        }[order.status] }}">
+                                            {{ order.status|title }}
+                                        </span>
+                                    </td>
+                                    <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>
+                                        <a href="{{ url_for('shop.order_details', order_id=order.id) }}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            View Details
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted mb-0">No recent orders.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Low Stock Alert Section -->
+    {% if low_stock_products %}
+        <div class="card mb-4 border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">Low Stock Alert</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Current Stock</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for product in low_stock_products %}
+                                <tr>
+                                    <td>{{ product.name }}</td>
+                                    <td>{{ product.stock }}</td>
+                                    <td>
+                                        <a href="{{ url_for('shop.edit_product', product_id=product.id) }}" 
+                                           class="btn btn-sm btn-warning">
+                                            Update Stock
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Delete Product Confirmation Modal -->
+<div class="modal fade" id="deleteProductModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <span id="deleteProductName"></span>?</p>
+                <p class="text-danger">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDelete">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let productToDelete = null;
+
+    // Handle delete button clicks
+    document.querySelectorAll('.delete-product').forEach(button => {
+        button.addEventListener('click', function() {
+            productToDelete = this.dataset.productId;
+            document.getElementById('deleteProductName').textContent = this.dataset.productName;
+            new bootstrap.Modal(document.getElementById('deleteProductModal')).show();
+        });
+    });
+
+    // Handle delete confirmation
+    document.getElementById('confirmDelete').addEventListener('click', function() {
+        if (!productToDelete) return;
+
+        fetch(`/shop/product/${productToDelete}/delete`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                location.reload();
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error deleting product');
+        });
+    });
+});
+</script>
+{% endblock %}

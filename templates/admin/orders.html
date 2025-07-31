@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - Manage Orders{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h2>Manage Orders</h2>
+        <hr>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="btn-group" role="group">
+            <a href="{{ url_for('admin.orders', status='pending') }}" 
+               class="btn btn-{{ 'primary' if request.args.get('status') == 'pending' else 'outline-primary' }}">
+                Pending
+            </a>
+            <a href="{{ url_for('admin.orders', status='in_delivery') }}" 
+               class="btn btn-{{ 'primary' if request.args.get('status') == 'in_delivery' else 'outline-primary' }}">
+                In Delivery
+            </a>
+            <a href="{{ url_for('admin.orders', status='delivered') }}" 
+               class="btn btn-{{ 'primary' if request.args.get('status') == 'delivered' else 'outline-primary' }}">
+                Delivered
+            </a>
+            <a href="{{ url_for('admin.orders') }}" 
+               class="btn btn-{{ 'primary' if not request.args.get('status') else 'outline-primary' }}">
+                All Orders
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                {% if orders %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>Customer</th>
+                                    <th>Shop</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Delivery Person</th>
+                                    <th>Created At</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in orders %}
+                                    <tr>
+                                        <td>#{{ order.id }}</td>
+                                        <td>{{ order.customer.username }}</td>
+                                        <td>{{ order.shop.name }}</td>
+                                        <td>${{ "%.2f"|format(order.total_amount) }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ 'primary' if order.status == 'pending' 
+                                                                else 'info' if order.status == 'in_delivery' 
+                                                                else 'success' if order.status == 'delivered'
+                                                                else 'secondary' }}">
+                                                {{ order.status|replace('_', ' ')|title }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if order.delivery_person %}
+                                                {{ order.delivery_person.username }}
+                                            {% elif order.status == 'pending' %}
+                                                <button class="btn btn-sm btn-primary assign-delivery"
+                                                        data-order-id="{{ order.id }}">
+                                                    Assign Delivery
+                                                </button>
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                        <td>
+                                            <div class="btn-group">
+                                                <button type="button" class="btn btn-sm btn-info view-details"
+                                                        data-order-id="{{ order.id }}">
+                                                    Details
+                                                </button>
+                                                {% if order.status == 'in_delivery' %}
+                                                    <button type="button" class="btn btn-sm btn-success track-delivery"
+                                                            data-order-id="{{ order.id }}">
+                                                        Track
+                                                    </button>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-center">No orders found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Order Details Modal -->
+<div class="modal fade" id="orderDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Order Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="orderDetailsContent">Loading...</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.assign-delivery').forEach(button => {
+    button.addEventListener('click', function() {
+        const orderId = this.dataset.orderId;
+        if (confirm('Are you sure you want to assign a delivery person to this order?')) {
+            fetch(`/admin/order/${orderId}/assign-delivery`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    window.location.reload();
+                } else {
+                    alert(data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error assigning delivery person');
+            });
+        }
+    });
+});
+
+document.querySelectorAll('.view-details').forEach(button => {
+    button.addEventListener('click', function() {
+        const orderId = this.dataset.orderId;
+        const modal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
+        
+        // Reset modal content
+        document.getElementById('orderDetailsContent').innerHTML = 'Loading...';
+        
+        // Show modal
+        modal.show();
+        
+        // Fetch order details
+        fetch(`/admin/order/${orderId}/details`)
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById('orderDetailsContent').innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('orderDetailsContent').innerHTML = 
+                    'Error loading order details';
+            });
+    });
+});
+
+document.querySelectorAll('.track-delivery').forEach(button => {
+    button.addEventListener('click', function() {
+        const orderId = this.dataset.orderId;
+        window.open(`/user/track-order/${orderId}`, '_blank');
+    });
+});
+</script>
+{% endblock %}

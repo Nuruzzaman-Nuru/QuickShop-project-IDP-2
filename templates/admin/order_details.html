@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block title %}Order Details - #{{ order.id }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-0">Order #{{ order.id }}</h3>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h5>Order Information</h5>
+                        <p><strong>Date:</strong> {{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                        <p><strong>Status:</strong> 
+                            <span class="badge bg-{{ order_status_colors[order.status] }}">
+                                {{ order.status|title }}
+                            </span>
+                        </p>
+                        <p><strong>Total Amount:</strong> ৳{{ "%.2f"|format(order.total_amount) }}</p>
+                        {% if order.coupon_code %}
+                        <p><strong>Coupon Applied:</strong> {{ order.coupon_code }}</p>
+                        <p><strong>Discount:</strong> ৳{{ "%.2f"|format(order.discount_amount) }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-4">
+                        <h5>Customer Information</h5>
+                        <p><strong>Name:</strong> {{ order.customer.name }}</p>
+                        <p><strong>Email:</strong> {{ order.customer.email }}</p>
+                        <p><strong>Phone:</strong> {{ order.customer.phone }}</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <h5>Delivery Information</h5>
+                        <p><strong>Address:</strong> {{ order.delivery_address }}</p>
+                        {% if order.delivery_instructions %}
+                        <p><strong>Instructions:</strong> {{ order.delivery_instructions }}</p>
+                        {% endif %}
+                        <div id="map" style="height: 300px;" class="mb-3"></div>
+                    </div>
+
+                    <div class="mb-4">
+                        <h5>Order Items</h5>
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Item</th>
+                                        <th>Price</th>
+                                        <th>Quantity</th>
+                                        <th>Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in order.items %}
+                                    <tr>
+                                        <td>{{ item.product.name }}</td>
+                                        <td>৳{{ "%.2f"|format(item.price) }}</td>
+                                        <td>{{ item.quantity }}</td>
+                                        <td>৳{{ "%.2f"|format(item.price * item.quantity) }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="3" class="text-end"><strong>Subtotal:</strong></td>
+                                        <td>৳{{ "%.2f"|format(order.subtotal) }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="3" class="text-end"><strong>Delivery Fee:</strong></td>
+                                        <td>৳{{ "%.2f"|format(order.delivery_fee) }}</td>
+                                    </tr>
+                                    {% if order.discount_amount %}
+                                    <tr>
+                                        <td colspan="3" class="text-end"><strong>Discount:</strong></td>
+                                        <td>-৳{{ "%.2f"|format(order.discount_amount) }}</td>
+                                    </tr>
+                                    {% endif %}
+                                    <tr>
+                                        <td colspan="3" class="text-end"><strong>Total:</strong></td>
+                                        <td><strong>৳{{ "%.2f"|format(order.total_amount) }}</strong></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+
+                    {% if order.status in ['pending', 'confirmed'] %}
+                    <div class="mb-4">
+                        <h5>Update Order Status</h5>
+                        <form method="POST" action="{{ url_for('admin.update_order_status', order_id=order.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <div class="mb-3">
+                                <select class="form-select" name="status" required>
+                                    <option value="">Select Status</option>
+                                    {% if order.status == 'pending' %}
+                                    <option value="confirmed">Confirm Order</option>
+                                    <option value="cancelled">Cancel Order</option>
+                                    {% elif order.status == 'confirmed' %}
+                                    <option value="processing">Start Processing</option>
+                                    <option value="cancelled">Cancel Order</option>
+                                    {% endif %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="notes" class="form-label">Status Notes (Optional)</label>
+                                <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Update Status</button>
+                        </form>
+                    </div>
+                    {% endif %}
+
+                    {% if not order.delivery_person and order.status == 'confirmed' %}
+                    <div class="mb-4">
+                        <a href="{{ url_for('admin.assign_delivery', order_id=order.id) }}" 
+                           class="btn btn-success">
+                            Assign Delivery Person
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Order Timeline</h5>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        {% for event in order.events|sort(attribute='created_at', reverse=True) %}
+                        <div class="timeline-item">
+                            <div class="timeline-marker"></div>
+                            <div class="timeline-content">
+                                <h6 class="mb-1">{{ event.status|title }}</h6>
+                                <p class="small text-muted mb-1">
+                                    {{ event.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                </p>
+                                {% if event.notes %}
+                                <p class="mb-0">{{ event.notes }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            {% if order.delivery_person %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Delivery Information</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Delivery Person:</strong> {{ order.delivery_person.name }}</p>
+                    <p><strong>Phone:</strong> {{ order.delivery_person.phone }}</p>
+                    <p><strong>Status:</strong> 
+                        <span class="badge bg-{{ delivery_status_colors[order.delivery_status] }}">
+                            {{ order.delivery_status|title }}
+                        </span>
+                    </p>
+                    {% if order.estimated_delivery_time %}
+                    <p><strong>Estimated Delivery:</strong> 
+                        {{ order.estimated_delivery_time.strftime('%H:%M') }}
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://maps.googleapis.com/maps/api/js?key={{ config['GOOGLE_MAPS_API_KEY'] }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const map = new google.maps.Map(document.getElementById('map'), {
+        zoom: 15,
+        center: { 
+            lat: {{ order.delivery_lat }}, 
+            lng: {{ order.delivery_lng }} 
+        }
+    });
+
+    new google.maps.Marker({
+        position: { 
+            lat: {{ order.delivery_lat }}, 
+            lng: {{ order.delivery_lng }} 
+        },
+        map: map,
+        title: 'Delivery Location'
+    });
+});
+</script>
+{% endblock %}

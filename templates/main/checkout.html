@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Checkout - QuickShop{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <!-- Order Summary -->
+        <div class="col-md-4 order-md-2 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">Order Summary</h4>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <tbody>
+                                {% for item in cart_items %}
+                                <tr>
+                                    <td>{{ item.product.name }} x {{ item.quantity }}</td>
+                                    <td class="text-end">৳{{ "%.2f"|format(item.price * item.quantity) }}</td>
+                                </tr>
+                                {% endfor %}
+                                <tr>
+                                    <td><strong>Total</strong></td>
+                                    <td class="text-end"><strong>৳{{ "%.2f"|format(total) }}</strong></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Checkout Form -->
+        <div class="col-md-8 order-md-1">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">Checkout</h4>
+                </div>
+                <div class="card-body">
+                    <form id="checkoutForm" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        
+                        <!-- Delivery Address -->
+                        <div class="mb-4">
+                            <h5>Delivery Address</h5>
+                            <div class="mb-3">
+                                <label for="address" class="form-label">Address</label>
+                                <input type="text" class="form-control" id="address" name="address" 
+                                       value="{{ current_user.address }}" required>
+                                <input type="hidden" id="latitude" name="latitude" value="{{ current_user.location_lat }}">
+                                <input type="hidden" id="longitude" name="longitude" value="{{ current_user.location_lng }}">
+                            </div>
+                            <div id="map" style="height: 300px;" class="mb-3"></div>
+                        </div>
+
+                        <!-- Payment Method -->
+                        <div class="mb-4">
+                            <h5>Payment Method</h5>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="radio" name="payment_method" 
+                                       id="cod" value="cod" checked>
+                                <label class="form-check-label" for="cod">
+                                    Cash on Delivery
+                                </label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="radio" name="payment_method" 
+                                       id="online" value="online">
+                                <label class="form-check-label" for="online">
+                                    Online Payment
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Additional Notes -->
+                        <div class="mb-4">
+                            <label for="notes" class="form-label">Order Notes (Optional)</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3"
+                                    placeholder="Any special instructions for delivery?"></textarea>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Place Order</button>
+                            <a href="{{ url_for('main.cart') }}" class="btn btn-outline-secondary">Back to Cart</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://maps.googleapis.com/maps/api/js?key={{ config['GOOGLE_MAPS_API_KEY'] }}&libraries=places"></script>
+<script src="{{ url_for('static', filename='js/maps.js') }}"></script>
+{% endblock %}

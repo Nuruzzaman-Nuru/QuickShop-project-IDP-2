@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #f8f9fa; padding: 20px; text-align: center; }
+        .content { padding: 20px; }
+        .order-info { background: #f8f9fa; padding: 15px; border-radius: 4px; margin: 15px 0; }
+        .items-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        .items-table th, .items-table td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+        .items-table th { background: #f8f9fa; }
+        .footer { text-align: center; padding: 20px; font-size: 0.9em; color: #6c757d; }
+        .button { display: inline-block; padding: 10px 20px; background: #28a745; color: white; text-decoration: none; border-radius: 4px; }
+        .warning { color: #856404; background: #fff3cd; padding: 10px; border-radius: 4px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>New Order Received!</h2>
+            <p>Order #{{ order.id }}</p>
+        </div>
+        
+        <div class="content">
+            <p>Hello {{ order.shop.name }},</p>
+            
+            <p>You have received a new order:</p>
+            
+            <div class="order-info">
+                <h4>Order Details</h4>
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Quantity</th>
+                            <th>Price</th>
+                            <th>Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in order.items %}
+                        <tr>
+                            <td>{{ item.product.name }}</td>
+                            <td>{{ item.quantity }}</td>
+                            <td>
+                                {% if item.negotiated_price %}
+                                    ${{ "%.2f"|format(item.negotiated_price) }}
+                                    <small>(Negotiated)</small>
+                                {% else %}
+                                    ${{ "%.2f"|format(item.price) }}
+                                {% endif %}
+                            </td>
+                            <td>${{ "%.2f"|format(item.subtotal) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="3"><strong>Total Amount</strong></td>
+                            <td><strong>${{ "%.2f"|format(order.total_amount) }}</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+                
+                {% if any_negotiated_items %}
+                <div class="warning">
+                    <strong>Note:</strong> This order contains negotiated prices.
+                </div>
+                {% endif %}
+                
+                <h4>Delivery Information</h4>
+                <p><strong>Address:</strong> {{ order.delivery_address }}</p>
+                {% if order.special_instructions %}
+                    <p><strong>Special Instructions:</strong> {{ order.special_instructions }}</p>
+                {% endif %}
+            </div>
+            
+            <p>Please confirm this order as soon as possible to ensure timely delivery.</p>
+            
+            <p>
+                <a href="{{ url_for('shop.order_details', order_id=order.id, _external=True) }}" class="button">
+                    Process Order
+                </a>
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p>Thank you for being a valued partner!</p>
+            <p>For any issues, please contact our support team.</p>
+        </div>
+    </div>
+</body>
+</html>
